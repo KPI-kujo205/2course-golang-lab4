@@ -1,6 +1,6 @@
 module github.com/KPI-kujo205/2course-golang-lab4
 
-go 1.22
+go 1.20
 
 require (
 	github.com/jarcoal/httpmock v1.3.1 // indirect
