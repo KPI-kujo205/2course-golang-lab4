@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"encoding/json"
 	"fmt"
 	. "gopkg.in/check.v1"
 	"net/http"
