@@ -28,7 +28,6 @@ type RespBody struct {
 }
 
 func (s *IntegrationSuite) TestBalancer(c *C) {
-	
 	if _, exists := os.LookupEnv("INTEGRATION_TEST"); !exists {
 		c.Skip("Integration test is not enabled")
 	}

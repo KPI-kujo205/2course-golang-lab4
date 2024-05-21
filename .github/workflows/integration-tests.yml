@@ -1,0 +1,27 @@
+
+name: Integration tests ci-cd 
+on:
+  pull_request:
+    branches:
+      - '*'
+  push:
+    branches: [ main ]
+
+jobs:
+  test:
+     runs-on: ubuntu-latest
+     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - name: Update packages and module
+        run: |
+          go get -u ./...
+          go mod download
+          go mod tidy
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.22'
+      - name: Running integration test
+        run: docker-compose -f docker-compose.yaml -f docker-compose.test.yaml up --exit-code-from test
+
