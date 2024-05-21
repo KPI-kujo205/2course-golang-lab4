@@ -11,8 +11,9 @@ import (
 
 	"sync"
 
-	"github.com/roman-mazur/architecture-practice-4-template/httptools"
-	"github.com/roman-mazur/architecture-practice-4-template/signal"
+
+	"github.com/KPI-kujo205/2course-golang-lab4/httptools"
+	"github.com/KPI-kujo205/2course-golang-lab4/signal"
 )
 
 var (

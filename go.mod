@@ -1,4 +1,4 @@
-module github.com/roman-mazur/architecture-practice-4-template
+module github.com/KPI-kujo205/2course-golang-lab4
 
 go 1.22
 
