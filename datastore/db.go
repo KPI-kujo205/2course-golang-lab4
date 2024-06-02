@@ -11,8 +11,9 @@ import (
 )
 
 const (
-	outFileName = "current-data"
-	bufSize     = 8192
+	outFileName   = "current-data"
+	bufSize       = 8192
+	deletionToken = "deletion-token"
 )
 
 var ErrNotFound = fmt.Errorf("record does not exist")
@@ -77,8 +78,8 @@ func NewDb(dir string, segmentSize int64) (*Db, error) {
 		return nil, err
 	}
 
-	db.startIndexRoutine()
-	db.startPutRoutine()
+	db.launchIndexHandler()
+	db.initiatePutProcessing()
 
 	return db, nil
 }
@@ -87,14 +88,14 @@ func (db *Db) Close() error {
 	return db.out.Close()
 }
 
-func (db *Db) startIndexRoutine() {
+func (db *Db) launchIndexHandler() {
 	go func() {
 		for op := range db.indexOps {
 			db.indexMutex.Lock()
 			if op.isWrite {
 				db.setKey(op.key, op.index)
 			} else {
-				s, p, err := db.getSegmentAndPos(op.key)
+				s, p, err := db.getSegmentAndPosition(op.key)
 				if err != nil {
 					db.keyPositions <- nil
 				} else {
@@ -106,7 +107,7 @@ func (db *Db) startIndexRoutine() {
 	}()
 }
 
-func (db *Db) startPutRoutine() {
+func (db *Db) initiatePutProcessing() {
 	go func() {
 		for {
 			op := <-db.putOps
@@ -157,7 +158,7 @@ func (db *Db) createSegment() error {
 	db.outPath = filePath
 	db.segments = append(db.segments, newSegment)
 	if len(db.segments) >= 3 {
-		db.performOldSegmentsCompaction()
+		db.mergeSegments()
 	}
 
 	return nil
@@ -169,7 +170,7 @@ func (db *Db) generateNewFileName() string {
 	return result
 }
 
-func (db *Db) performOldSegmentsCompaction() {
+func (db *Db) mergeSegments() {
 	go func() {
 		filePath := db.generateNewFileName()
 		newSegment := &Segment{
@@ -191,7 +192,12 @@ func (db *Db) performOldSegmentsCompaction() {
 						continue
 					}
 				}
-				value, _ := s.getFromSegment(index)
+				value, _ := s.retrieveDataFromSegment(index)
+
+				if value == deletionToken {
+					continue
+				}
+
 				e := Entry{
 					key:   key,
 					value: value,
@@ -284,7 +290,7 @@ func (db *Db) setKey(key string, n int64) {
 	db.outOffset += n
 }
 
-func (db *Db) getSegmentAndPos(key string) (*Segment, int64, error) {
+func (db *Db) getSegmentAndPosition(key string) (*Segment, int64, error) {
 	for i := range db.segments {
 		s := db.segments[len(db.segments)-i-1]
 		pos, ok := s.index[key]
@@ -296,7 +302,7 @@ func (db *Db) getSegmentAndPos(key string) (*Segment, int64, error) {
 	return nil, 0, ErrNotFound
 }
 
-func (db *Db) getPos(key string) *KeyPosition {
+func (db *Db) getPosition(key string) *KeyPosition {
 	op := IndexOp{
 		isWrite: false,
 		key:     key,
@@ -306,14 +312,19 @@ func (db *Db) getPos(key string) *KeyPosition {
 }
 
 func (db *Db) Get(key string) (string, error) {
-	keyPos := db.getPos(key)
+	keyPos := db.getPosition(key)
 	if keyPos == nil {
 		return "", ErrNotFound
 	}
-	value, err := keyPos.segment.getFromSegment(keyPos.position)
+	value, err := keyPos.segment.retrieveDataFromSegment(keyPos.position)
 	if err != nil {
 		return "", err
 	}
+
+	if value == deletionToken {
+		return "", ErrNotFound
+	}
+
 	return value, nil
 }
 
@@ -331,11 +342,15 @@ func (db *Db) Put(key, value string) error {
 	return err
 }
 
+func (db *Db) Delete(key string) error {
+	return db.Put(key, deletionToken)
+}
+
 func (db *Db) getLastSegment() *Segment {
 	return db.segments[len(db.segments)-1]
 }
 
-func (s *Segment) getFromSegment(position int64) (string, error) {
+func (s *Segment) retrieveDataFromSegment(position int64) (string, error) {
 	file, err := os.Open(s.filePath)
 	if err != nil {
 		return "", err
