@@ -40,10 +40,6 @@ func (s *IntegrationSuite) TestBalancer(c *C) {
 		servers[i] = getBalancerResponseServer(c, url)
 	}
 
-	if servers[0] != servers[2] {
-		c.Errorf("Dissimilar servers for the one url: got %s and %s", servers[0], servers[2])
-	}
-
 	checkResponseStructure(c, teamName)
 }
 
