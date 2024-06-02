@@ -7,24 +7,30 @@ import (
 )
 
 func TestEntry_Encode(t *testing.T) {
-	e := Entry{"key", "value"}
-	e.Decode(e.Encode())
-	if e.key != "key" {
-		t.Error("incorrect key")
+	e := Entry{"key", "val"}
+	data := e.Encode()
+	e.Decode(data)
+	if e.GetLength() != 18 {
+		t.Error("Incorrect length")
 	}
-	if e.value != "value" {
-		t.Error("incorrect value")
+	if e.key != "key" {
+		t.Error("Incorrect key")
+	}
+	if e.value != "val" {
+		t.Error("Incorrect value")
 	}
 }
 
 func TestReadValue(t *testing.T) {
-	e := Entry{"key", "test-value"}
-	data := e.Encode()
-	v, err := readValue(bufio.NewReader(bytes.NewReader(data)))
+	encoder := Entry{"key", "val"}
+	data := encoder.Encode()
+	readData := bytes.NewReader(data)
+	bReadData := bufio.NewReader(readData)
+	value, err := readValue(bReadData)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if v != "test-value" {
-		t.Errorf("Got bat value [%s]", v)
+	if value != "val" {
+		t.Errorf("Wrong value: [%s]", value)
 	}
 }

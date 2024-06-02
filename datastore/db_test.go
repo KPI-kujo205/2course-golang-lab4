@@ -8,41 +8,41 @@ import (
 )
 
 func TestDb_Put(t *testing.T) {
-	dir, err := ioutil.TempDir("", "test-db")
+	saveDirectory, err := ioutil.TempDir("", "testDir")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
+	defer os.RemoveAll(saveDirectory)
 
-	db, err := NewDb(dir)
+	dataBase, err := NewDb(saveDirectory, 45)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer dataBase.Close()
 
-	pairs := [][]string {
-		{"key1", "value1"},
-		{"key2", "value2"},
-		{"key3", "value3"},
+	pairs := [][]string{
+		{"1", "v1"},
+		{"2", "v2"},
+		{"3", "v3"},
 	}
-
-	outFile, err := os.Open(filepath.Join(dir, outFileName))
+	finalPath := filepath.Join(saveDirectory, outFileName+"0")
+	outFile, err := os.Open(finalPath)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	t.Run("put/get", func(t *testing.T) {
+	t.Run("check put and get methods", func(t *testing.T) {
 		for _, pair := range pairs {
-			err := db.Put(pair[0], pair[1])
+			err := dataBase.Put(pair[0], pair[1])
 			if err != nil {
-				t.Errorf("Cannot put %s: %s", pairs[0], err)
+				t.Errorf("Unable to place %s: %s.", pair[0], err)
 			}
-			value, err := db.Get(pair[0])
+			actual, err := dataBase.Get(pair[0])
 			if err != nil {
-				t.Errorf("Cannot get %s: %s", pairs[0], err)
+				t.Errorf("Unable to retrieve %s: %s", pair[0], err)
 			}
-			if value != pair[1] {
-				t.Errorf("Bad value returned expected %s, got %s", pair[1], value)
+			if actual != pair[1] {
+				t.Errorf("Invalid value returned. Expected: %s, Actual: %s.", pair[1], actual)
 			}
 		}
 	})
@@ -51,42 +51,44 @@ func TestDb_Put(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	size1 := outInfo.Size()
+	expectedStateSize := outInfo.Size()
 
-	t.Run("file growth", func(t *testing.T) {
+	t.Run("check increase file size", func(t *testing.T) {
 		for _, pair := range pairs {
-			err := db.Put(pair[0], pair[1])
+			err := dataBase.Put(pair[0], pair[1])
 			if err != nil {
-				t.Errorf("Cannot put %s: %s", pairs[0], err)
+				t.Errorf("Unable to place %s: %s.", pair[0], err)
 			}
 		}
+		t.Log(dataBase)
 		outInfo, err := outFile.Stat()
+		actualStateSize := outInfo.Size()
 		if err != nil {
 			t.Fatal(err)
 		}
-		if size1 * 2 != outInfo.Size() {
-			t.Errorf("Unexpected size (%d vs %d)", size1, outInfo.Size())
+		if expectedStateSize != actualStateSize {
+			t.Errorf("Size mismatch: Expected: %d, Actual: %d.", expectedStateSize, actualStateSize)
 		}
 	})
 
-	t.Run("new db process", func(t *testing.T) {
-		if err := db.Close(); err != nil {
+	t.Run("check creation new process test", func(t *testing.T) {
+		if err := dataBase.Close(); err != nil {
 			t.Fatal(err)
 		}
-		db, err = NewDb(dir)
+		dataBase, err = NewDb(saveDirectory, 45)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		for _, pair := range pairs {
-			value, err := db.Get(pair[0])
+			actual, err := dataBase.Get(pair[0])
 			if err != nil {
-				t.Errorf("Cannot put %s: %s", pairs[0], err)
+				t.Errorf("Unable to place %s: %s.", pair[1], err)
 			}
-			if value != pair[1] {
-				t.Errorf("Bad value returned expected %s, got %s", pair[1], value)
+			expected := pair[1]
+			if actual != expected {
+				t.Errorf("Invalid value returned. Expected: %s, Actual: %s.", expected, actual)
 			}
 		}
 	})
-
 }
